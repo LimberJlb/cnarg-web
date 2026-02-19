@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import MatchCard from '@/components/MatchCard';
-import MatchModal from '@/components/MatchModal';
+import { supabase } from '../../lib/supabase';
+import MatchCard from '../../components/MatchCard';
+import MatchModal from '../../components/MatchModal';
 
 export default function BracketsPage() {
   const [partidos, setPartidos] = useState<any[]>([]);

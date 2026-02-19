@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 export default function MappoolPage() {
   const [rondaActual, setRondaActual] = useState('ROUND OF 16');
@@ -93,7 +93,7 @@ export default function MappoolPage() {
                 <div className="w-[60px] bg-[#fdc15a] flex items-center justify-center border-l border-black/10">BPM</div>
                 <div className="w-[60px] bg-[#fdc15a] flex items-center justify-center border-l border-black/10">SR</div>
                 <div className="w-[70px] bg-[#fdc15a] flex items-center justify-center border-l border-black/10">LENGTH</div>
-                <div className="w-[60px] bg-[#fdc15a] flex items-center justify-center border-l border-black/10">HP</div>
+                <div className="w-[60px] bg-[#fdc15a] flex items-center justify-center border-l border-black/10">COMBO</div>
                 <div className="w-[60px] bg-[#fdc15a] flex items-center justify-center border-l border-black/10">OD</div>
                 <div className="w-[120px] bg-[#fdc15a] flex items-center justify-center border-l border-black/10">MAPPER</div>
                 <div className="w-[90px] bg-[#fdc15a] flex items-center justify-center border-l border-black/10 rounded-tr-sm">MAP ID</div>
