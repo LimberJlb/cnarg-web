@@ -38,3 +38,62 @@ body {
   font-weight: bold;
   font-style: normal;
 }
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;  /* Ancho para scroll vertical */
+  height: 6px; /* Alto para scroll horizontal */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #fdc15a; /* El dorado de la CNARG */
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #d9953d;
+}
+
+/* Contenedor de la línea que sale del MatchCard */
+.bracket-connector {
+  position: absolute;
+  right: -64px; /* Debe coincidir con el gap-16 (64px) de tu contenedor */
+  top: 50%;
+  width: 64px;
+  height: 2px;
+  z-index: 10;
+}
+
+/* Línea horizontal que sale del match */
+.bracket-connector::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: currentColor; /* Usa el color del texto del componente */
+}
+
+/* Línea vertical que une los dos matches (solo para el primer match de cada par) */
+.connector-vertical {
+  position: absolute;
+  right: 0;
+  width: 2px;
+  background-color: currentColor;
+}
+
+/* Dirección hacia abajo (para el de arriba) */
+.connector-down {
+  top: 0;
+  height: calc(50% + 20px); /* Ajustar según el gap vertical */
+}
+
+/* Dirección hacia arriba (para el de abajo) */
+.connector-up {
+  bottom: 0;
+  height: calc(50% + 20px);
+}
