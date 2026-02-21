@@ -6,7 +6,7 @@ interface PlayerCardProps {
   osu_id: string | number;
   rank: number; // El número grande (#2, #3)
   
-  estado: 'participando' | 'descalificado'; // Solo acepta estos dos valores
+  estado: 'participando' | 'eliminado'; // Solo acepta estos dos valores
   index: number; // Para intercalar los colores (par/impar)
   pais?: string; // Código de país (ej: 'ES', 'AR') - Opcional
 }
@@ -15,7 +15,6 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
   nombre,
   osu_id,
   rank,
- 
   estado,
   index,
 }) => {

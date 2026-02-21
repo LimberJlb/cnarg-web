@@ -1,3 +1,5 @@
+import AuthNav from '../components/AuthNav';
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#2e2e2e] text-white font-sans overflow-x-hidden">
@@ -19,12 +21,10 @@ export default function Home() {
       <a href="/estadisticas" className="cursor-pointer hover:text-white transition-colors">ESTADISTICAS</a>
     </div>
 
-    {/* Botón Ingresar */}
-    <button className="cursor-pointer bg-[#fdc15a] hover:bg-[#d9953d] text-[#2e2e2e] font-['ITCMachine'] h-full px-13 transition-colors duration-200 text-[30px]">
-      INGRESAR
-    </button>
-  </div>
-</nav>
+    {/* Botón Ingresar o Perfil */}
+          <AuthNav />
+        </div>
+     </nav>
 
 
       {/* Hero Section dividido al 50/50 */}
