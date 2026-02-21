@@ -62,7 +62,7 @@ export default function BracketsPage() {
   };
 
   return (
-  <div className="h-screen w-full flex flex-col overflow-hidden bg-[#2e2e2e]">
+  <div className="h-screen w-full flex flex-col overflow-hidden cursor-default bg-[#2e2e2e]">
       {/* 1. NAV (SIEMPRE ARRIBA) */}
       <nav className="flex justify-between items-center h-22 bg-[#2e2e2e] relative z-30 shadow-[0_9px_50px_rgba(0,0,0,0.5)] w-full">
         <h1 className="text-[#fdc15a] font-['ITCMachine'] text-[60px] px-10">CNARG</h1>
