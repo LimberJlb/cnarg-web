@@ -62,24 +62,7 @@ export default function BracketsPage() {
   };
 
   return (
-  <div className="h-screen w-full flex flex-col overflow-hidden cursor-default bg-[#2e2e2e]">
-      {/* 1. NAV (SIEMPRE ARRIBA) */}
-      <nav className="flex justify-between items-center h-22 bg-[#2e2e2e] relative z-30 shadow-[0_9px_50px_rgba(0,0,0,0.5)] w-full">
-        <h1 className="text-[#fdc15a] font-['ITCMachine'] text-[60px] px-10">CNARG</h1>
-        <div className="flex items-center h-full">
-          <div className="flex space-x-9 text-sm font-['TrebuchetMS'] text-[#fdc15a] text-[20px] mr-15">
-            <a href="/" className="hover:text-white">INICIO</a>
-            <a href="/mappool" className="hover:text-white">MAPPOOL</a>
-            <a href="/jugadores" className="hover:text-white">JUGADORES</a>
-            <span className="text-white border-b-2 border-[#fdc15a]">BRACKETS</span>
-            <a href="/staff" className="hover:text-white">STAFF</a>
-            <a href="/estadisticas" className="hover:text-white">ESTADISTICAS</a>
-          </div>
-          <button className="bg-[#fdc15a] hover:bg-[#d9953d] text-[#2e2e2e] font-['ITCMachine'] h-full px-13 text-[30px] transition-colors">
-            INGRESAR
-          </button>
-        </div>
-      </nav>
+  <div className="h-screen w-full flex flex-col overflow-visible cursor-default bg-[#2e2e2e]">
       
 
       {/* 2. CONTENEDOR PRINCIPAL (SIDEBAR + CONTENIDO) */}

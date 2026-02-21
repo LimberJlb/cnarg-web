@@ -1,110 +1,112 @@
 import React from 'react';
 
-// Definimos las propiedades que aceptará la tarjeta
 interface PlayerCardProps {
   nombre: string;
   osu_id: string | number;
-  rank: number; // El número grande (#2, #3)
-  
-  estado: 'participando' | 'eliminado'; // Solo acepta estos dos valores
-  index: number; // Para intercalar los colores (par/impar)
-  pais?: string; // Código de país (ej: 'ES', 'AR') - Opcional
+  rank: number | string; // Permitimos string por si viene "TBD"
+  avatar?: string; 
+  teamLogo?: string; // <-- Nueva prop
+  teamName?: string; // <-- Agregar
+  estado?: string;
+  index: number;
 }
 
 const PlayerCard: React.FC<PlayerCardProps> = ({
   nombre,
   osu_id,
   rank,
+  avatar, // <-- 1. IMPORTANTE: Ahora recibimos el avatar aquí
+  teamLogo,
+  teamName,
   estado,
   index,
 }) => {
-  // Lógica para intercalar colores: si el índice es par, usa el esquema amarillo-azul. Si es impar, verde-azul.
   const isEven = index % 2 === 0;
   
-  // Colores basados en el diseño
   const yellowColor = '#fdc15a';
   const blueColor = '#67a4da';
-  const greenColor = '#4ade80'; // Un verde brillante tipo tailwind
+  const greenColor = '#4ade80';
 
+  // Nota: Tailwind a veces tiene problemas con variables dinámicas en [] 
+  // si no están pre-definidas. Si no ves los colores, usaremos clases estándar.
   const gradientClass = isEven
-    ? `from-[${yellowColor}] to-[${blueColor}]`
-    : `from-[${greenColor}] to-[${blueColor}]`;
+    ? `from-[#fdc15a] to-[#67a4da]`
+    : `from-[#4ade80] to-[#67a4da]`;
   
-  const nameColorClass = isEven ? `text-[${yellowColor}]` : `text-[${blueColor}]`;
+  const nameColorClass = isEven ? `text-[#fdc15a]` : `text-[#67a4da]`;
 
   return (
-    // Contenedor principal con el borde degradado
     <div className={`relative p-[3px] rounded-3xl overflow-hidden bg-gradient-to-r ${gradientClass} shadow-xl transition-transform hover:scale-[1.02]`}>
       
-      {/* Contenido interno de la tarjeta (fondo oscuro) */}
       <div className="bg-[#1a1a1a] rounded-[calc(1.5rem-3px)] p-5 flex gap-5 h-full relative z-10">
         
         {/* IZQUIERDA: Imagen del Avatar */}
-        <div className="w-36 h-36 flex-shrink-0 bg-black/50 rounded-2xl overflow-hidden shadow-inner border border-white/5">
+        <div className="w-32 h-32 md:w-36 md:h-36 flex-shrink-0 bg-black/50 rounded-2xl overflow-hidden shadow-inner border border-white/5">
           <img 
-            src={`https://a.ppy.sh/${osu_id}`} 
+            // 2. LÓGICA DE IMAGEN: Usa el avatar de la DB o el de la API de osu! por defecto
+            src={avatar || `https://a.ppy.sh/${osu_id}`} 
             alt={nombre} 
             className="w-full h-full object-cover"
-            onError={(e) => { e.currentTarget.src = 'https://osu.ppy.sh/images/layout/avatar-guest.png'; }} // Avatar por defecto si falla
+            onError={(e) => { e.currentTarget.src = 'https://osu.ppy.sh/images/layout/avatar-guest.png'; }}
           />
         </div>
 
-        {/* DERECHA: Información del Jugador */}
-        <div className="flex flex-col flex-grow justify-between">
-          <div>
-            {/* Fila 1: Nombre*/}
-            <div className="flex items-center gap-2">
+        {/* CONTENEDOR INFO DERECHA */}
+        <div className="flex flex-grow justify-between py-1">
+          
+          {/* LADO IZQUIERDO DE LA INFO (Nombre y Rank) */}
+          <div className="flex flex-col justify-between">
+            <div>
               <h2 className={`font-['ITCMachine'] text-3xl uppercase tracking-wide truncate ${nameColorClass}`}>
                 {nombre}
               </h2>
-              
+              <div className="flex flex-col mt-1">
+                <span className="text-white/40 font-bold text-[10px] uppercase tracking-[0.2em]">RANK 4K ARG</span>
+                <span className="font-['ITCMachine'] text-5xl text-white leading-none">#{rank}</span>
+              </div>
             </div>
-        </div>
-
-            {/* Fila 2: Rank Global */}
-            <div className="flex items-baseline gap-3 mt-1">
-              <span className={`font-['ITCMachine'] text-4xl ${isEven ? 'text-green-500' : 'text-green-400'}`}>
-                #{rank}
-              </span>
-              
+            
+            <div className="text-[10px] text-white/20 font-bold uppercase">
+              ID: {osu_id}
             </div>
-        
+          </div>
 
-          {/* Fila 3 (Inferior): Rank Nacional y Estado */}
-          <div className="flex justify-between items-end">
-            <div>
-              <p className="text-gray-500 font-['TrebuchetMS'] uppercase tracking-wider mb-1">
-                RANK NACIONAL
-              </p>
-              
+          {/* LADO DERECHO DE LA INFO (Logo -> Team Name -> Estado) */}
+          <div className="flex flex-col items-end justify-between min-w-[120px]">
+            
+            {/* Logo y Nombre del Team (Apilados arriba) */}
+            <div className="flex flex-col items-end gap-1">
+              {teamLogo && (
+                <div className="w-16 h-16 bg-white/5 rounded-xl p-1.5 border border-white/10 shadow-inner">
+                  <img 
+                    src={teamLogo} 
+                    alt={teamName} 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              )}
+              {teamName && (
+                <span className="text-[#fdc15a] font-['ITCMachine'] text-[10px] uppercase tracking-wider text-right max-w-[100px] truncate">
+                  {teamName}
+                </span>
+              )}
             </div>
 
-            {/* Botón de Estado */}
+            {/* Botón de Estado (Abajo de todo) */}
             <div 
-              className={`px-6 py-2 rounded-full text-xs font-['TrebuchetMS'] uppercase font-black tracking-widest shadow-lg transform skew-x-[-10deg]
-                ${estado === 'participando' 
-                  ? 'bg-green-600 text-white shadow-green-600/40' 
-                  : 'bg-red-600 text-white shadow-red-600/40'}`
-              }
+              className={`px-5 py-2 rounded-full text-[10px] font-['TrebuchetMS'] uppercase font-black tracking-widest transform skew-x-[-15deg] shadow-lg
+                ${estado?.toLowerCase() === 'participando' ? 'bg-green-600' : 'bg-red-600'}`}
             >
-              <span className="block transform skew-x-[10deg]"> {/* Contrarestrar la inclinación del texto */}
-                {estado}
+              <span className="block transform skew-x-[15deg] text-white">
+                {estado || 'PENDIENTE'}
               </span>
             </div>
           </div>
+
         </div>
       </div>
     </div>
   );
 };
-
-// Función auxiliar para obtener el emoji de la bandera
-function getFlagEmoji(countryCode: string) {
-  const codePoints = countryCode
-    .toUpperCase()
-    .split('')
-    .map(char =>  127397 + char.charCodeAt(0));
-  return String.fromCodePoint(...codePoints);
-}
 
 export default PlayerCard;

@@ -1,44 +1,74 @@
-import { cookies } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
-import LoginButton from './LoginButton';
+'use client';
 
-export default async function AuthNav() {
-    const cookieStore = await cookies();
-    const sessionId = cookieStore.get('cna_auth_session')?.value;
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
-    if (!sessionId) {
-        return <LoginButton />;
-    }
+export default function AuthNav() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  useEffect(() => {
+    const checkCustomSession = async () => {
+      // 1. Buscamos la cookie manualmente
+      const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('cna_auth_session='))
+        ?.split('=')[1];
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-        return <LoginButton />;
-    }
+      if (cookieValue) {
+        // 2. Si existe, buscamos ese osu_id en nuestra tabla 'users'
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('osu_id', cookieValue)
+          .single();
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+        if (data && !error) {
+          setUser(data);
+        }
+      }
+      setLoading(false);
+    };
 
-    const { data: user, error } = await supabaseAdmin
-        .from('users')
-        .select('username, avatar_url')
-        .eq('id', sessionId)
-        .single();
+    checkCustomSession();
+  }, []);
 
-    if (error || !user) {
-        return <LoginButton />;
-    }
+  const handleLogout = () => {
+    // Borramos la cookie y reseteamos el estado
+    document.cookie = "cna_auth_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    setUser(null);
+    window.location.reload();
+  };
 
-    return (
-        <div className="flex items-center space-x-4 bg-[#fdc15a] hover:bg-[#d9953d] text-[#2e2e2e] h-full px-13 transition-colors duration-200 cursor-pointer">
-            <span className="font-['ITCMachine'] text-[26px] mt-1">
-                {user.username}
-            </span>
-            <img
-                src={user.avatar_url || '/logo-4k.png'}
-                alt={`${user.username} avatar`}
-                className="w-10 h-10 rounded-full border-2 border-[#2e2e2e] object-cover shadow-sm"
-            />
+  if (loading) return <div className="px-6 text-[#fdc15a] animate-pulse">...</div>;
+
+  return (
+    <div className="h-full">
+      {user ? (
+        <div className="flex items-center gap-4 px-6 h-full bg-[#1a1a1a]">
+          <div className="text-right">
+            <p className="text-[#fdc15a] font-['ITCMachine'] uppercase text-sm">{user.username}</p>
+            <button onClick={handleLogout} className="text-xs text-white/50 hover:underline">SALIR</button>
+          </div>
+          <img src={user.avatar_url} className="w-10 h-10 rounded-full border border-[#fdc15a]" alt="" />
         </div>
-    );
+      ) : (
+        <button 
+          onClick={() => {
+            const root = 'https://osu.ppy.sh/oauth/authorize';
+            const params = new URLSearchParams({
+              client_id: process.env.NEXT_PUBLIC_OSU_CLIENT_ID!,
+              redirect_uri: process.env.NEXT_PUBLIC_OSU_REDIRECT_URI!,
+              response_type: 'code',
+              scope: 'identify',
+            });
+            window.location.href = `${root}?${params}`;
+          }}
+          className="bg-[#fdc15a] text-[#2e2e2e] font-['ITCMachine'] h-full px-12 text-[24px]"
+        >
+          INGRESAR
+        </button>
+      )}
+    </div>
+  );
 }

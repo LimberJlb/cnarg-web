@@ -97,3 +97,17 @@ body {
   bottom: 0;
   height: calc(50% + 20px);
 }
+
+html {
+  /* Reserva el espacio del scrollbar siempre, evitando el salto de contenido */
+  scrollbar-gutter: stable;
+}
+
+/* Tu scrollbar custom actual (ejemplo de estilo) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #fdc15a;
+  border-radius: 10px;
+}

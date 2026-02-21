@@ -4,93 +4,61 @@ import { createClient } from '@supabase/supabase-js';
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
-    const error = searchParams.get('error');
 
-    // Si no pusiste bien las variables 
-    if (error || !code) {
-        // dsakljdasljk, algo falló antes de tiempo
-        return NextResponse.redirect(new URL('/?error=OAuthFailedOrCanceled', request.url));
-    }
+    if (!code) return NextResponse.redirect(new URL('/?error=no_code', request.url));
 
     try {
-        // Por favor que este todo
-        const clientId = process.env.NEXT_PUBLIC_OSU_CLIENT_ID;
-        const clientSecret = process.env.OSU_CLIENT_SECRET;
-        const redirectUri = process.env.NEXT_PUBLIC_OSU_REDIRECT_URI;
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
 
-        if (!clientId || !clientSecret || !redirectUri || !supabaseUrl || !supabaseServiceKey) {
-            throw new Error('Faltan variables de entorno esenciales. dsakljdasljk, revisa tu .env');
-        }
-
-        // Intercambiar el code por token
+        // 1. Intercambio de tokens (osu!)
         const tokenResponse = await fetch('https://osu.ppy.sh/oauth/token', {
             method: 'POST',
             headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                client_id: clientId,
-                client_secret: clientSecret,
+                client_id: process.env.NEXT_PUBLIC_OSU_CLIENT_ID,
+                client_secret: process.env.OSU_CLIENT_SECRET,
                 code,
                 grant_type: 'authorization_code',
-                redirect_uri: redirectUri,
+                redirect_uri: process.env.NEXT_PUBLIC_OSU_REDIRECT_URI,
             }),
         });
-
-        if (!tokenResponse.ok) {
-            const errorText = await tokenResponse.text();
-            console.error('Falló el fetch del token:', errorText, 'dsakljdasljk');
-            throw new Error('No se pudo sacar el token de osu!. dsakljdasljk');
-        }
-
         const tokenData = await tokenResponse.json();
 
-        // Traer info del usuario
+        // 2. Obtener perfil de osu!
         const userResponse = await fetch('https://osu.ppy.sh/api/v2/me', {
-            headers: { Authorization: `Bearer ${tokenData?.access_token}`, 'Accept': 'application/json' },
+            headers: { Authorization: `Bearer ${tokenData.access_token}` },
         });
-
-        if (!userResponse.ok) {
-            throw new Error('No pude sacar el perfil del usuario. dsakljdasljk');
-        }
-
         const osuUser = await userResponse.json();
 
-        // Guardar en Supabase (SERVICE_ROLE_KEY porque tenemos permiso total)
-        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-        const { data: dbUser, error: upsertError } = await supabaseAdmin
+        // 3. Guardar en tu tabla 'users'
+        const { data: dbUser, error: dbError } = await supabaseAdmin
             .from('users')
             .upsert({
-                osu_id: osuUser?.id,
-                username: osuUser?.username,
-                avatar_url: osuUser?.avatar_url,
-                access_token: tokenData?.access_token,
-                refresh_token: tokenData?.refresh_token,
+                osu_id: osuUser.id,
+                username: osuUser.username,
+                avatar_url: osuUser.avatar_url,
             }, { onConflict: 'osu_id' })
             .select()
             .single();
 
-        if (upsertError) {
-            console.error('Supabase Upsert Error:', upsertError, 'dsakljdasljk');
-            throw new Error('Error guardando al usuario. dsakljdasljk');
-        }
+        if (dbError) throw dbError;
 
-        // Poner cookie de sesión y redirigir al dashboard
+        // 4. Crear tu propia cookie de sesión
         const response = NextResponse.redirect(new URL('/', request.url));
-        response.cookies.set('cna_auth_session', dbUser?.id, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7, // 1 semana
+        response.cookies.set('cna_auth_session', dbUser.osu_id.toString(), {
             path: '/',
+            httpOnly: false, // Permitimos que el cliente la lea
+            maxAge: 60 * 60 * 24 * 7, // 1 semana
+            sameSite: 'lax',
         });
 
         return response;
 
-    } catch (error) {
-        console.error('OAuth Callback Controller Error:', error, 'dsakljdasljk');
-        // Siempre redirigir a inicio para mostrar el error
-        return NextResponse.redirect(new URL(`/?error=AuthenticationFailed`, request.url));
+    } catch (err) {
+        console.error(err);
+        return NextResponse.redirect(new URL('/?error=auth_failed', request.url));
     }
 }
