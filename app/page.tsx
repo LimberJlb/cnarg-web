@@ -3,28 +3,7 @@ import AuthNav from '../components/AuthNav';
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#2e2e2e] text-white font-sans overflow-x-hidden">
-      {/* Navbar simple */}
       
-<nav className="flex justify-between items-center h-22 bg-[#2e2e2e] relative z-30 shadow-[0_9px_50px_rgba(0,0,0,0.5)]">
-  {/* Logo a la izquierda - Se mantiene con su padding */}
-  <h1 className="text-[#fdc15a] font-['ITCMachine'] text-[60px] px-37">CNARG</h1>
-
-  {/* Contenedor derecho: Agrupa links y botón */}
-  <div className="flex items-center h-full">
-    {/* Links de navegación - Eliminamos px lateral para que se peguen a la derecha */}
-    <div className="flex space-x-9 text-sm font-['TrebuchetMS'] text-[#fdc15a] text-[20px] mr-15">
-      <a href="/" className="cursor-pointer hover:text-white transition-colors">INICIO</a>
-      <a href="/mappool" className="cursor-pointer hover:text-white transition-colors">MAPPOOL</a>
-      <a href="/jugadores" className="cursor-pointer hover:text-white transition-colors">JUGADORES</a>
-      <a href="/brackets" className="cursor-pointer hover:text-white transition-colors">BRACKETS</a>
-      <a href="/staff" className="cursor-pointer hover:text-white transition-colors">STAFF</a>
-      <a href="/estadisticas" className="cursor-pointer hover:text-white transition-colors">ESTADISTICAS</a>
-    </div>
-
-    {/* Botón Ingresar o Perfil */}
-          <AuthNav />
-        </div>
-     </nav>
 
 
       {/* Hero Section dividido al 50/50 */}
