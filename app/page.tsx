@@ -1,35 +1,35 @@
+import LoginButton from '../components/LoginButton';
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#2e2e2e] text-white font-sans overflow-x-hidden">
       {/* Navbar simple */}
-      
-<nav className="flex justify-between items-center h-22 bg-[#2e2e2e] relative z-30 shadow-[0_9px_50px_rgba(0,0,0,0.5)]">
-  {/* Logo a la izquierda - Se mantiene con su padding */}
-  <h1 className="text-[#fdc15a] font-['ITCMachine'] text-[60px] px-37">CNARG</h1>
 
-  {/* Contenedor derecho: Agrupa links y botón */}
-  <div className="flex items-center h-full">
-    {/* Links de navegación - Eliminamos px lateral para que se peguen a la derecha */}
-    <div className="flex space-x-9 text-sm font-['TrebuchetMS'] text-[#fdc15a] text-[20px] mr-15">
-      <a href="/" className="cursor-pointer hover:text-white transition-colors">INICIO</a>
-      <a href="/mappool" className="cursor-pointer hover:text-white transition-colors">MAPPOOL</a>
-      <a href="/jugadores" className="cursor-pointer hover:text-white transition-colors">JUGADORES</a>
-      <a href="/brackets" className="cursor-pointer hover:text-white transition-colors">BRACKETS</a>
-      <a href="/staff" className="cursor-pointer hover:text-white transition-colors">STAFF</a>
-      <a href="/estadisticas" className="cursor-pointer hover:text-white transition-colors">ESTADISTICAS</a>
-    </div>
+      <nav className="flex justify-between items-center h-22 bg-[#2e2e2e] relative z-30 shadow-[0_9px_50px_rgba(0,0,0,0.5)]">
+        {/* Logo a la izquierda - Se mantiene con su padding */}
+        <h1 className="text-[#fdc15a] font-['ITCMachine'] text-[60px] px-37">CNARG</h1>
 
-    {/* Botón Ingresar */}
-    <button className="cursor-pointer bg-[#fdc15a] hover:bg-[#d9953d] text-[#2e2e2e] font-['ITCMachine'] h-full px-13 transition-colors duration-200 text-[30px]">
-      INGRESAR
-    </button>
-  </div>
-</nav>
+        {/* Contenedor derecho: Agrupa links y botón */}
+        <div className="flex items-center h-full">
+          {/* Links de navegación - Eliminamos px lateral para que se peguen a la derecha */}
+          <div className="flex space-x-9 text-sm font-['TrebuchetMS'] text-[#fdc15a] text-[20px] mr-15">
+            <a href="/" className="cursor-pointer hover:text-white transition-colors">INICIO</a>
+            <a href="/mappool" className="cursor-pointer hover:text-white transition-colors">MAPPOOL</a>
+            <a href="/jugadores" className="cursor-pointer hover:text-white transition-colors">JUGADORES</a>
+            <a href="/brackets" className="cursor-pointer hover:text-white transition-colors">BRACKETS</a>
+            <a href="/staff" className="cursor-pointer hover:text-white transition-colors">STAFF</a>
+            <a href="/estadisticas" className="cursor-pointer hover:text-white transition-colors">ESTADISTICAS</a>
+          </div>
+
+          {/* Botón Ingresar */}
+          <LoginButton />
+        </div>
+      </nav>
 
 
       {/* Hero Section dividido al 50/50 */}
       <div className="relative flex h-[calc(100vh-88px)] w-full overflow-hidden">
-        
+
         {/* LADO IZQUIERDO: Texto (Exactamente 50%) */}
         <div className="w-1/2 flex flex-col justify-center px-37 bg-[#2e2e2e]">
           <h2 className="text-[139px] font-['ITCMachine'] uppercase leading-[0.85] tracking-tight">
@@ -47,8 +47,8 @@ export default function Home() {
 
         {/* LADO DERECHO: GIF/Imagen (Exactamente 50%) */}
         <div className="w-1/2 relative">
-          <img 
-            src="/fondo.gif" 
+          <img
+            src="/fondo.gif"
             alt="Fondo"
             className="absolute inset-0 h-full w-full object-cover"
           />
@@ -56,14 +56,14 @@ export default function Home() {
 
         {/* LOGO CENTRAL: Flotando en la costura de ambos lados */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-          <img 
-            src="/logo-4k.png" 
-            alt="Logo 4K" 
-            className="w-[30vw] max-w-[480px] min-w-[280px] drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]" 
+          <img
+            src="/logo-4k.png"
+            alt="Logo 4K"
+            className="w-[30vw] max-w-[480px] min-w-[280px] drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
           />
         </div>
       </div>
-      
+
     </main>
   );
 }
