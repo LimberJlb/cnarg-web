@@ -111,3 +111,11 @@ html {
   background: #fdc15a;
   border-radius: 10px;
 }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  /* Mata el scroll global para siempre */
+  overflow: hidden !important; 
+}

@@ -8,40 +8,44 @@ import { getUpcomingLobbies } from '../../lib/queries';
 import BracketSelectorBtn from '../../components/BracketSelectorBtn';
 
 export default function BracketsPage() {
-  // --- ESTADOS ---
-  const [lobbies, setLobbies] = useState<any[]>([]); // Para la Sidebar
-  const [partidos, setPartidos] = useState<any[]>([]); // Para los Brackets
+  const [lobbies, setLobbies] = useState<any[]>([]);
+  const [partidos, setPartidos] = useState<any[]>([]);
   const [bracketView, setBracketView] = useState<'winners' | 'losers'>('winners');
-  
   const [loading, setLoading] = useState(true);
-  
-  // EL ESTADO MÁGICO: Sincroniza el hover entre Sidebar y Brackets
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
+  const [hoveredTeamName, setHoveredTeamName] = useState<string | null>(null);
 
-  // --- CARGA DE DATOS ---
+  const manualConnectors: { [key: number]: 'up' | 'down' | 'straight' } = {
+    1: 'down', 2: 'up',
+    3: 'down', 4: 'up',
+    5: 'down', 6: 'up',
+    7: 'down', 8: 'up',
+    9: 'down', 10: 'up',
+    11: 'down', 12: 'up',
+    13: 'down', 14: 'up',
+    15: 'straight'
+  };
+
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       try {
-        // Ejecutamos ambas consultas en paralelo para máxima velocidad
         const [sidebarData, { data: matchesData }] = await Promise.all([
           getUpcomingLobbies(),
-          supabase
-            .from('matches')
-            .select(`
-              *,
-              team_1:teams!team_1_id (name, logo_url, players (nickname)),
-              team_2:teams!team_2_id (name, logo_url, players (nickname)),
-              lobbies (
-                match_time, status, lobby_link,
-                referee:staff!referee_id (nickname),
-                streamer:staff!streamer_id (nickname),
-                caster1:staff!caster_1_id (nickname),
-                caster2:staff!caster_2_id (nickname)
-              )
-            `)
+          supabase.from('matches').select(`
+            *,
+            team_1:teams!team_1_id (name, logo_url),
+            team_2:teams!team_2_id (name, logo_url),
+            lobbies (
+              match_time, 
+              status, 
+              referee:staff!referee_id(nickname), 
+              streamer:staff!streamer_id(nickname), 
+              caster1:staff!caster_1_id(nickname), 
+              caster2:staff!caster_2_id(nickname)
+            )
+          `)
         ]);
-
         setLobbies(sidebarData || []);
         setPartidos(matchesData || []);
       } catch (error) {
@@ -53,162 +57,172 @@ export default function BracketsPage() {
     fetchData();
   }, []);
 
-  // --- LÓGICA FILTRADO ---
   const getMatchesByRound = (bracket: string, round: string) => {
-    return partidos.filter(p => 
-      p.bracket_group?.toLowerCase() === bracket.toLowerCase() && 
-      p.stage === round
-    );
+    return partidos
+      .filter(p => 
+        p.bracket_group?.toLowerCase() === bracket.toLowerCase() && 
+        p.stage === round
+      )
+      .sort((a, b) => (a.match_order || 0) - (b.match_order || 0)); 
   };
 
+  const getHoverProps = (match: any) => ({
+    isHighlighted: hoveredMatchId === match.id || 
+                    match.team_1?.name === hoveredTeamName || 
+                    match.team_2?.name === hoveredTeamName,
+    onMouseEnter: () => setHoveredMatchId(match.id),
+    onMouseLeave: () => { setHoveredMatchId(null); setHoveredTeamName(null); },
+    onTeamHover: setHoveredTeamName,
+    isTeamActive: hoveredTeamName
+  });
+
+  if (loading) return <div className="h-screen bg-[#2e2e2e] flex items-center justify-center font-['ITCMachine'] text-[#fdc15a] text-4xl animate-pulse">CARGANDO BRACKETS...</div>;
+
   return (
-  <div className="h-screen w-full flex flex-col overflow-visible cursor-default bg-[#2e2e2e]">
+    /**
+     * fixed inset-0: Clava el div a los bordes de la pantalla.
+     * overflow-hidden: Mata el scrollbar global de la derecha.
+     */
+    <div className="fixed inset-0 pt-[80px] w-full h-full flex flex-col bg-[#2e2e2e] overflow-hidden select-none">
       
-
-      {/* 2. CONTENEDOR PRINCIPAL (SIDEBAR + CONTENIDO) */}
-      <div className="flex flex-1 overflow-hidden" >
-      {/* SIDEBAR: Al pasar el mouse aquí, se activa el hoveredMatchId */}
-      <AgendaSidebar 
-        lobbies={lobbies} 
-        activeId={hoveredMatchId} 
-        onHover={setHoveredMatchId} 
-      />
-      
-
-        {/* CONTENIDO DE BRACKETS */}
-        <main className="flex-1 overflow-auto p-8 custom-scrollbar">
-        <div className="ml-110 mb-8">
-          <h1 className="font-['ITCMachine'] text-[100px] uppercase text-white">BRACKETS</h1>
-        </div>
-
-          {/* 2. REEMPLAZAMOS LOS BOTONES VIEJOS AQUÍ */}
-        <div className="flex ml-110 gap-18 mb-10">
-          <BracketSelectorBtn 
-            label="WINNERS"
-            isActive={bracketView === 'winners'}
-            onClick={() => setBracketView('winners')}
-            variant="winners"
-          />
-          
-            <BracketSelectorBtn 
-            label="LOSERS"
-            isActive={bracketView === 'losers'}
-            onClick={() => setBracketView('losers')}
-            variant="losers"
-          />
-        </div>
-
-          {/* BRACKET: Escucha el hoveredMatchId y se ilumina solo */}
-        <div className="w-full flex pb-20">
-          <div className="inline-flex gap-16 px-10 items-start">
-  
-  {/* --- VISTA DE WINNERS --- */}
-  {bracketView === 'winners' && (
-    <>
-      {/* 1. Round of 16 */}
-      <div className="flex flex-col gap-10">
-        <h3 className="text-center font-['ITCMachine'] text-[#fdc15a] bg-black/20 py-2 text-xl">ROUND OF 16</h3>
-        {getMatchesByRound('winners', 'Round of 16').map((match, index) => (
-          <MatchCard key={match.id} match={match} p1={match.team_1?.name || "TBD"} p2={match.team_2?.name || "TBD"} logo1={match.team_1?.logo_url || '/no-logo.png'} logo2={match.team_2?.logo_url || '/no-logo.png'} s1={match.score_1 || 0} s2={match.score_2 || 0} estado={match.lobbies?.[0]?.status || 'SCHEDULED'} isHighlighted={hoveredMatchId === match.id} onMouseEnter={() => setHoveredMatchId(match.id)} onMouseLeave={() => setHoveredMatchId(null)} 
-          showConnector={true} connectorType={index % 2 === 0 ? 'down' : 'up'}/>
-        ))}
+      <div className="flex flex-1 h-full overflow-hidden">
         
-        
-      </div>
+        {/* SIDEBAR: Mantiene su propio scroll interno si está configurado en su componente */}
+        <AgendaSidebar lobbies={lobbies} activeId={hoveredMatchId} onHover={setHoveredMatchId} />
 
-      {/* 2. Quarterfinals (Winners) */}
-      <div className="flex flex-col gap-10">
-        <h3 className="text-center font-['ITCMachine'] text-[#fdc15a] bg-black/20 py-2 text-xl">QUARTERFINALS</h3>
-        {getMatchesByRound('winners', 'Quarterfinals').map((match, index) => (
-          <MatchCard key={match.id} match={match} p1={match.team_1?.name || "TBD"} p2={match.team_2?.name || "TBD"} logo1={match.team_1?.logo_url || '/no-logo.png'} logo2={match.team_2?.logo_url || '/no-logo.png'} s1={match.score_1 || 0} s2={match.score_2 || 0} estado={match.lobbies?.[0]?.status || 'SCHEDULED'} isHighlighted={hoveredMatchId === match.id} onMouseEnter={() => setHoveredMatchId(match.id)} onMouseLeave={() => setHoveredMatchId(null)}
-          showConnector={true} connectorType={index % 2 === 0 ? 'down' : 'up'} />
-        ))}
-      </div>
+        {/* MAIN: El único lugar donde se permite scroll (horizontal y vertical) */}
+        <main className="flex-1 h-full overflow-auto p-8 custom-scrollbar">
+          <div className="ml-10 mb-8">
+            <h1 className="font-['ITCMachine'] text-[80px] lg:text-[100px] uppercase text-white leading-none text-shadow-lg">
+              BRACKETS
+            </h1>
+          </div>
 
-      {/* 3. Semifinals (Winners) */}
-      <div className="flex flex-col gap-26">
-        <h3 className="text-center font-['ITCMachine'] text-[#fdc15a] bg-black/20 py-2 text-xl">SEMIFINALS</h3>
-        {getMatchesByRound('winners', 'Semifinals').map((match, index) => (
-          <MatchCard key={match.id} match={match} p1={match.team_1?.name || "TBD"} p2={match.team_2?.name || "TBD"} logo1={match.team_1?.logo_url || '/no-logo.png'} logo2={match.team_2?.logo_url || '/no-logo.png'} s1={match.score_1 || 0} s2={match.score_2 || 0} estado={match.lobbies?.[0]?.status || 'SCHEDULED'} isHighlighted={hoveredMatchId === match.id} onMouseEnter={() => setHoveredMatchId(match.id)} onMouseLeave={() => setHoveredMatchId(null)} 
-          showConnector={true} connectorType={index % 2 === 0 ? 'down' : 'up'}/>
-        ))}
-      </div>
+          <div className="flex ml-10 gap-8 mb-10">
+            <BracketSelectorBtn label="WINNERS" isActive={bracketView === 'winners'} onClick={() => setBracketView('winners')} variant="winners" />
+            <BracketSelectorBtn label="LOSERS" isActive={bracketView === 'losers'} onClick={() => setBracketView('losers')} variant="losers" />
+          </div>
 
-      {/* 4. Winners Final */}
-      <div className="flex flex-col gap-50">
-        <h3 className="text-center font-['ITCMachine'] text-[#fdc15a] bg-black/20 py-2 text-xl">FINALS</h3>
-        {getMatchesByRound('winners', 'Finals').map((match) => (
-          <MatchCard key={match.id} match={match} p1={match.team_1?.name || "TBD"} p2={match.team_2?.name || "TBD"} logo1={match.team_1?.logo_url || '/no-logo.png'} logo2={match.team_2?.logo_url || '/no-logo.png'} s1={match.score_1 || 0} s2={match.score_2 || 0} estado={match.lobbies?.[0]?.status || 'SCHEDULED'} isHighlighted={hoveredMatchId === match.id} onMouseEnter={() => setHoveredMatchId(match.id)} onMouseLeave={() => setHoveredMatchId(null)}
-          showConnector={true}
-    connectorType="straight" />
-        ))}
-      </div>
+          {/* CONTENEDOR DE LAS COLUMNAS: Aquí es donde se genera el scroll interno */}
+          <div className="inline-flex gap-32 px-8 min-h-[1300px] items-stretch pb-40">
+            {bracketView === 'winners' && (
+              <>
+                <BracketColumn title="ROUND OF 16" color="#fdc15a">
+                  {getMatchesByRound('winners', 'Round of 16').map((match) => (
+                    <MatchCard 
+                      key={match.id} 
+                      match={match} 
+                      p1={match.team_1?.name || "TBD"}
+                      p2={match.team_2?.name || "TBD"}
+                      logo1={match.team_1?.logo_url}
+                      logo2={match.team_2?.logo_url}
+                      s1={match.score_1 || 0}
+                      s2={match.score_2 || 0}
+                      estado={match.lobbies?.[0]?.status || 'SCHEDULED'}
+                      {...getHoverProps(match)} 
+                      showConnector={true} 
+                      connectorType={manualConnectors[match.match_order] || 'straight'} 
+                    />
+                  ))}
+                </BracketColumn>
 
-      {/* 5. Grand Finals */}
-      <div className="flex flex-col gap-50">
-        <h3 className="text-center font-['ITCMachine'] text-[#fdc15a] bg-black/20 py-2 text-xl">GRAND FINALS</h3>
-        {getMatchesByRound('winners', 'Grand Finals').map((match) => (
-          <MatchCard key={match.id} match={match} p1={match.team_1?.name || "TBD"} p2={match.team_2?.name || "TBD"} logo1={match.team_1?.logo_url || '/no-logo.png'} logo2={match.team_2?.logo_url || '/no-logo.png'} s1={match.score_1 || 0} s2={match.score_2 || 0} estado={match.lobbies?.[0]?.status || 'SCHEDULED'} isHighlighted={hoveredMatchId === match.id} onMouseEnter={() => setHoveredMatchId(match.id)} onMouseLeave={() => setHoveredMatchId(null)}
-         />
-        ))}
-      </div>
-    </>
-  )}
+                <BracketColumn title="QUARTERFINALS" color="#fdc15a">
+                  {getMatchesByRound('winners', 'Quarterfinals').map((match) => (
+                    <MatchCard 
+                      key={match.id} 
+                      match={match} 
+                      p1={match.team_1?.name || "TBD"}
+                      p2={match.team_2?.name || "TBD"}
+                      logo1={match.team_1?.logo_url}
+                      logo2={match.team_2?.logo_url}
+                      s1={match.score_1 || 0}
+                      s2={match.score_2 || 0}
+                      estado={match.lobbies?.[0]?.status || 'SCHEDULED'}
+                      {...getHoverProps(match)} 
+                      showConnector={true} 
+                      connectorType={manualConnectors[match.match_order] || 'straight'} 
+                    />
+                  ))}
+                </BracketColumn>
 
-  {/* --- VISTA DE LOSERS (Estructura Challonge) --- */}
-  {bracketView === 'losers' && (
-    <>
-      {/* 1. Quarterfinals R1 */}
-      <div className="flex flex-col gap-10">
-        <h3 className="text-center font-['ITCMachine'] text-[#67a4da] bg-black/20 py-2 text-xl uppercase">QUARTERFINALS R1</h3>
-        {getMatchesByRound('losers', 'Quarterfinals R1').map((match, index) => (
-          <MatchCard key={match.id} match={match} p1={match.team_1?.name || "TBD"} p2={match.team_2?.name || "TBD"} logo1={match.team_1?.logo_url || '/no-logo.png'} logo2={match.team_2?.logo_url || '/no-logo.png'} s1={match.score_1 || 0} s2={match.score_2 || 0} estado={match.lobbies?.[0]?.status || 'SCHEDULED'} isHighlighted={hoveredMatchId === match.id} onMouseEnter={() => setHoveredMatchId(match.id)} onMouseLeave={() => setHoveredMatchId(null)} isLosers={true}
-          showConnector={true} connectorType={index % 2 === 0 ? 'down' : 'up'}/>
-        ))}
-      </div>
+                <BracketColumn title="SEMIFINALS" color="#fdc15a">
+                  {getMatchesByRound('winners', 'Semifinals').map((match) => (
+                    <MatchCard 
+                      key={match.id} 
+                      match={match} 
+                      p1={match.team_1?.name || "TBD"}
+                      p2={match.team_2?.name || "TBD"}
+                      logo1={match.team_1?.logo_url}
+                      logo2={match.team_2?.logo_url}
+                      s1={match.score_1 || 0}
+                      s2={match.score_2 || 0}
+                      estado={match.lobbies?.[0]?.status || 'SCHEDULED'}
+                      {...getHoverProps(match)} 
+                      showConnector={true} 
+                      connectorType={manualConnectors[match.match_order] || 'straight'} 
+                    />
+                  ))}
+                </BracketColumn>
 
-      {/* 2. Semifinals R1 */}
-      <div className="flex flex-col gap-10">
-        <h3 className="text-center font-['ITCMachine'] text-[#67a4da] bg-black/20 py-2 text-xl uppercase">SEMIFINALS R1</h3>
-        {getMatchesByRound('losers', 'Semifinals R1').map((match) => (
-          <MatchCard key={match.id} match={match} p1={match.team_1?.name || "TBD"} p2={match.team_2?.name || "TBD"} logo1={match.team_1?.logo_url || '/no-logo.png'} logo2={match.team_2?.logo_url || '/no-logo.png'} s1={match.score_1 || 0} s2={match.score_2 || 0} estado={match.lobbies?.[0]?.status || 'SCHEDULED'} isHighlighted={hoveredMatchId === match.id} onMouseEnter={() => setHoveredMatchId(match.id)} onMouseLeave={() => setHoveredMatchId(null)} isLosers={true}
-          showConnector={true}
-    connectorType="straight"/>
-        ))}
-      </div>
+                <BracketColumn title="FINALS" color="#fdc15a">
+                  {getMatchesByRound('winners', 'Finals').map((match) => (
+                    <MatchCard 
+                      key={match.id} 
+                      match={match} 
+                      p1={match.team_1?.name || "TBD"}
+                      p2={match.team_2?.name || "TBD"}
+                      logo1={match.team_1?.logo_url}
+                      logo2={match.team_2?.logo_url}
+                      s1={match.score_1 || 0}
+                      s2={match.score_2 || 0}
+                      estado={match.lobbies?.[0]?.status || 'SCHEDULED'}
+                      {...getHoverProps(match)} 
+                      showConnector={true} 
+                      connectorType={manualConnectors[match.match_order] || 'straight'} 
+                    />
+                  ))}
+                </BracketColumn>
 
-      {/* 3. Semifinals R2 */}
-      <div className="flex flex-col gap-10">
-        <h3 className="text-center font-['ITCMachine'] text-[#67a4da] bg-black/20 py-2 text-xl uppercase">SEMIFINALS R2</h3>
-        {getMatchesByRound('losers', 'Semifinals R2').map((match, index) => (
-          <MatchCard key={match.id} match={match} p1={match.team_1?.name || "TBD"} p2={match.team_2?.name || "TBD"} logo1={match.team_1?.logo_url || '/no-logo.png'} logo2={match.team_2?.logo_url || '/no-logo.png'} s1={match.score_1 || 0} s2={match.score_2 || 0} estado={match.lobbies?.[0]?.status || 'SCHEDULED'} isHighlighted={hoveredMatchId === match.id} onMouseEnter={() => setHoveredMatchId(match.id)} onMouseLeave={() => setHoveredMatchId(null)} isLosers={true}
-          showConnector={true} connectorType={index % 2 === 0 ? 'down' : 'up'}/>
-        ))}
-      </div>
-
-      {/* 4. Finals R1 */}
-      <div className="flex flex-col gap-27">
-        <h3 className="text-center font-['ITCMachine'] text-[#67a4da] bg-black/20 py-2 text-xl uppercase">FINALS R1</h3>
-        {getMatchesByRound('losers', 'Finals R1').map((match, index) => (
-          <MatchCard key={match.id} match={match} p1={match.team_1?.name || "TBD"} p2={match.team_2?.name || "TBD"} logo1={match.team_1?.logo_url || '/no-logo.png'} logo2={match.team_2?.logo_url || '/no-logo.png'} s1={match.score_1 || 0} s2={match.score_2 || 0} estado={match.lobbies?.[0]?.status || 'SCHEDULED'} isHighlighted={hoveredMatchId === match.id} onMouseEnter={() => setHoveredMatchId(match.id)} onMouseLeave={() => setHoveredMatchId(null)} isLosers={true}
-          showConnector={true}
-    connectorType="straight"/>
-        ))}
-      </div>
-
-      {/* 5. Finals R2 (Losers Final) */}
-      <div className="flex flex-col gap-27">
-        <h3 className="text-center font-['ITCMachine'] text-[#67a4da] bg-black/20 py-2 text-xl uppercase">FINALS R2</h3>
-        {getMatchesByRound('losers', 'Finals R2').map((match) => (
-          <MatchCard key={match.id} match={match} p1={match.team_1?.name || "TBD"} p2={match.team_2?.name || "TBD"} logo1={match.team_1?.logo_url || '/no-logo.png'} logo2={match.team_2?.logo_url || '/no-logo.png'} s1={match.score_1 || 0} s2={match.score_2 || 0} estado={match.lobbies?.[0]?.status || 'SCHEDULED'} isHighlighted={hoveredMatchId === match.id} onMouseEnter={() => setHoveredMatchId(match.id)} onMouseLeave={() => setHoveredMatchId(null)} isLosers={true}
-          />
-        ))}
-      </div>
-    </>
-  )}
-</div>
+                <BracketColumn title="GRAND FINALS" color="#fdc15a">
+                  {getMatchesByRound('winners', 'Grand Finals').map((match) => (
+                    <MatchCard 
+                      key={match.id} 
+                      match={match} 
+                      p1={match.team_1?.name || "TBD"}
+                      p2={match.team_2?.name || "TBD"}
+                      logo1={match.team_1?.logo_url}
+                      logo2={match.team_2?.logo_url}
+                      s1={match.score_1 || 0}
+                      s2={match.score_2 || 0}
+                      estado={match.lobbies?.[0]?.status || 'SCHEDULED'}
+                      {...getHoverProps(match)} 
+                    />
+                  ))}
+                </BracketColumn>
+              </>
+            )}
           </div>
         </main>
+      </div>
+    </div>
+  );
+}
+
+function BracketColumn({ title, children, color }: { title: string, children: React.ReactNode, color: string }) {
+  const columnWidth = "w-[300px]"; 
+
+  return (
+    <div className={`flex flex-col ${columnWidth}`}>
+      <div className="h-24 flex items-center">
+        <h3 
+          className="w-full text-center font-['ITCMachine'] bg-black/40 py-4 text-xl tracking-widest uppercase border-b-2" 
+          style={{ color, borderColor: color }}
+        >
+          {title}
+        </h3>
+      </div>
+      <div className="flex-1 flex flex-col justify-around py-20">
+        {children}
       </div>
     </div>
   );
