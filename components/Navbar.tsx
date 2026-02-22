@@ -20,21 +20,23 @@ export default function Navbar() {
 
   return (
     <nav className="w-full bg-[#2e2e2e] shadow-[0_9px_50px_rgba(0,0,0,0.5)] z-50 relative">
-      {/* Contenedor Principal: Limita el ancho en monitores gigantes */}
-      <div className="max-w-[1920px] mx-auto flex justify-between items-center h-20 lg:h-22 px-6 lg:px-12">
+      {/* CAMBIO: Quitamos px y pr para que el lado derecho sea libre */}
+      <div className="max-w-[1920px] mx-auto flex justify-between items-center h-20 lg:h-22 pl-6 lg:pl-12 pr-0">
         
-        {/* LOGO: Tamaño fluido según resolución */}
+        {/* LOGO */}
         <Link href="/" className="z-50">
           <h1 className="text-[#fdc15a] font-['ITCMachine'] text-4xl lg:text-[60px] leading-none cursor-pointer hover:scale-105 transition-transform">
             CNARG
           </h1>
         </Link>
 
-        {/* CONTENEDOR DERECHO */}
-        <div className="flex items-center gap-8 h-full">
+        {/* CONTENEDOR DERECHO: Ahora llegará hasta el borde */}
+        <div className="flex items-center gap-4 lg:gap-8 h-full">
           
-          {/* LINKS ESCRITORIO: Se ocultan en celulares (md:flex) */}
-          <div className="hidden md:flex items-center space-x-6 lg:space-x-9">
+          <div className="hidden md:flex items-center space-x-6 lg:space-x-9 pr-4">
+          
+            {/* LINKS ESCRITORIO: Se ocultan en celulares (md:flex) */}
+            <div className="hidden md:flex items-center space-x-6 lg:space-x-9">
             {NAV_LINKS.map((link) => (
               <Link 
                 key={link.href} 
@@ -46,16 +48,17 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            </div>
           </div>
 
-          {/* BOTÓN AUTH: Siempre visible */}
+          {/* BOTÓN AUTH: Ahora puede ocupar todo el alto y pegarse al borde */}
           <div className="h-full flex items-center">
             <AuthNav />
           </div>
 
-          {/* BOTÓN CELULAR: Solo visible en pantallas pequeñas */}
+          {/* Botón Celular: Le agregamos un pr-6 para que no se pegue al borde en móviles */}
           <button 
-            className="md:hidden text-[#fdc15a] p-2"
+            className="md:hidden text-[#fdc15a] p-2 pr-6"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             <span className="text-3xl">{isMenuOpen ? '✕' : '☰'}</span>

@@ -4,6 +4,7 @@ interface PlayerCardProps {
   nombre: string;
   osu_id: string | number;
   rank: number | string; // Permitimos string por si viene "TBD"
+  seed: number | string; // <-- Nueva prop para el Seeding
   avatar?: string; 
   teamLogo?: string; // <-- Nueva prop
   teamName?: string; // <-- Agregar
@@ -15,6 +16,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
   nombre,
   osu_id,
   rank,
+  seed,
   avatar, // <-- 1. IMPORTANTE: Ahora recibimos el avatar aquí
   teamLogo,
   teamName,
@@ -40,68 +42,81 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
       
       <div className="bg-[#1a1a1a] rounded-[calc(1.5rem-3px)] p-5 flex gap-5 h-full relative z-10">
         
-        {/* IZQUIERDA: Imagen del Avatar */}
-        <div className="w-32 h-32 md:w-36 md:h-36 flex-shrink-0 bg-black/50 rounded-2xl overflow-hidden shadow-inner border border-white/5">
-          <img 
-            // 2. LÓGICA DE IMAGEN: Usa el avatar de la DB o el de la API de osu! por defecto
-            src={avatar || `https://a.ppy.sh/${osu_id}`} 
-            alt={nombre} 
-            className="w-full h-full object-cover"
-            onError={(e) => { e.currentTarget.src = 'https://osu.ppy.sh/images/layout/avatar-guest.png'; }}
-          />
-        </div>
+        {/* IZQUIERDA: Imagen con Link al Perfil */}
+        <a 
+          href={`https://osu.ppy.sh/users/${osu_id}`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="relative w-32 h-32 md:w-36 md:h-36 flex-shrink-0 group/avatar"
+        >
+          <div className="w-full h-full bg-black/50 rounded-2xl overflow-hidden border border-white/5 transition-all group-hover/avatar:border-[#fdc15a]/50">
+            <img 
+              src={avatar || `https://a.ppy.sh/${osu_id}`} 
+              alt={nombre} 
+              className="w-full h-full object-cover transition-transform group-hover/avatar:scale-110"
+            />
+          </div>
+          {/* Overlay que aparece al hacer hover sobre la foto */}
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity rounded-2xl">
+            <span className="text-[10px] font-bold text-white uppercase tracking-tighter">Ver Perfil</span>
+          </div>
+        </a>
 
         {/* CONTENEDOR INFO DERECHA */}
         <div className="flex flex-grow justify-between py-1">
           
-          {/* LADO IZQUIERDO DE LA INFO (Nombre y Rank) */}
-          <div className="flex flex-col justify-between">
+          
+
+          {/* DERECHA: Info */}
+        <div className="flex flex-col flex-grow justify-between cursor-default py-1">
+          <div className="flex justify-between items-start">
             <div>
-              <h2 className={`font-['ITCMachine'] text-3xl uppercase tracking-wide truncate ${nameColorClass}`}>
+              <h2 className={`font-['ITCMachine'] text-3xl tracking-wide truncate ${nameColorClass}`}>
                 {nombre}
               </h2>
-              <div className="flex flex-col mt-1">
-                <span className="text-white/40 font-bold text-[10px] uppercase tracking-[0.2em]">RANK 4K ARG</span>
-                <span className="font-['ITCMachine'] text-5xl text-white leading-none">#{rank}</span>
+              <div className="flex gap-4 mt-1">
+                <div className="flex flex-col">
+                  <span className="text-white/40 font-bold text-[8px] uppercase tracking-widest">RANK 4K</span>
+                  <span className="font-['ITCMachine'] text-2xl text-white">#{rank}</span>
+                </div>
+                {/* Visualización del SEED */}
+                <div className="flex flex-col border-l border-white/10 pl-4">
+                  <span className="text-[#fdc15a] font-bold text-[8px] uppercase tracking-widest">SEEDING</span>
+                  <span className="font-['ITCMachine'] text-2xl text-[#fdc15a]">#{seed || '??'}</span>
+                </div>
               </div>
             </div>
-            
-            <div className="text-[10px] text-white/20 font-bold uppercase">
-              ID: {osu_id}
-            </div>
-          </div>
 
-          {/* LADO DERECHO DE LA INFO (Logo -> Team Name -> Estado) */}
-          <div className="flex flex-col items-end justify-between min-w-[120px]">
-            
             {/* Logo y Nombre del Team (Apilados arriba) */}
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex flex-col items-end gap-2"> {/* Más espacio entre logo y texto */}
               {teamLogo && (
-                <div className="w-16 h-16 bg-white/5 rounded-xl p-1.5 border border-white/10 shadow-inner">
+                <div className="w-15 h-15 bg-white/5 rounded-xl border border-white/10 shadow-inner flex items-center justify-center">
                   <img 
                     src={teamLogo} 
                     alt={teamName} 
-                    className="w-full h-full object-contain"
-                  />
+                    className="w-full h-full object-cover rounded-lg" // Importante: mantiene la proporción
+                    />
                 </div>
               )}
               {teamName && (
-                <span className="text-[#fdc15a] font-['ITCMachine'] text-[10px] uppercase tracking-wider text-right max-w-[100px] truncate">
-                  {teamName}
-                </span>
+              <span className="text-[#fdc15a] font-['ITCMachine'] text-sm uppercase tracking-widest text-right max-w-[130px] leading-tight">
+                    {teamName}
+              </span>
               )}
             </div>
+          </div>
 
             {/* Botón de Estado (Abajo de todo) */}
-            <div 
-              className={`px-5 py-2 rounded-full text-[10px] font-['TrebuchetMS'] uppercase font-black tracking-widest transform skew-x-[-15deg] shadow-lg
-                ${estado?.toLowerCase() === 'participando' ? 'bg-green-600' : 'bg-red-600'}`}
-            >
-              <span className="block transform skew-x-[15deg] text-white">
-                {estado || 'PENDIENTE'}
-              </span>
-            </div>
-          </div>
+  <div 
+    className={`px-6 py-2.5 rounded-full text-[11px] font-['TrebuchetMS'] uppercase font-black tracking-widest transform skew-x-[-15deg] shadow-lg
+      ${estado?.toLowerCase() === 'participando' ? 'bg-green-600' : 'bg-red-600'}`}
+  >
+    <span className="block transform skew-x-[15deg] text-white">
+      {estado || 'no qualifiers'}
+    </span>
+    
+  </div>
+</div>
 
         </div>
       </div>
