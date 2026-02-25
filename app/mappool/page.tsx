@@ -101,7 +101,7 @@ export default function MappoolPage() {
       </div>
 
       <div className="flex flex-col gap-[2px] w-full max-w-[1200px] mx-auto font-sans shadow-2xl">
-        {/* CABECERA */}
+        {/* CABECERA AMARILLA */}
         <div className="flex h-[35px] w-full items-stretch overflow-hidden mb-2 px-0 opacity-90 cursor-default">
           <div className="w-[90px] bg-[#fdc15a] flex items-center justify-center text-[#2e2e2e] font-black text-[14px] uppercase tracking-tighter flex-shrink-0">
             {rondaActual === 'QUALIFIERS' ? 'POOL' : 'STAGE'}
@@ -135,6 +135,7 @@ export default function MappoolPage() {
                 ${!isElite && !isCustom ? 'border-b border-white/5' : ''}
               `}
             >
+              {/* SLOT LADO IZQUIERDO */}
               <div className={`w-[80px] flex items-center justify-center font-bold flex-shrink-0 cursor-default
                 ${isElite || isCustom || isQualifiers ? 'bg-[#fdc15a] text-black' : 'bg-white text-[#2e2e2e]'}`}>
                 {isQualifiers ? (
@@ -147,21 +148,36 @@ export default function MappoolPage() {
                 )}
               </div>
 
+              {/* BARRA DE COLOR DEL PATRÓN */}
               <div className={`w-[25px] flex items-center justify-center flex-shrink-0 relative border-l border-black/5
                 ${isElite || isCustom || isQualifiers ? 'bg-[#fdc15a]/10' : 'bg-white'}`}>
                 <div className="w-[8px] h-[45px] rounded-full" style={{ backgroundColor: getPatternColor(mapa.pattern_type) }}></div>
               </div>
 
-              {/* BANNER CONTAINER - Modificado para empujar la foto al final */}
-              <div className="flex-grow relative bg-[#1a1a1a] flex items-center px-8 min-w-0 border-l border-white/5 overflow-hidden justify-between">
-                <img src={`https://assets.ppy.sh/beatmaps/${mapa.banner_id}/covers/cover.jpg`} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-60 transition-all duration-700" alt="" />
+              {/* BANNER CLICKEABLE CON ZOOM EFFECT */}
+              <a 
+                href={`https://osu.ppy.sh/b/${mapa.beatmap_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-grow relative bg-[#1a1a1a] flex items-center px-8 min-w-0 border-l border-white/5 overflow-hidden justify-between group/banner"
+              >
+                {/* Imagen con ZOOM */}
+                <img 
+                  src={`https://assets.ppy.sh/beatmaps/${mapa.banner_id}/covers/cover.jpg`} 
+                  className="absolute inset-0 w-full h-full object-cover opacity-50 transition-transform duration-700 group-hover/banner:scale-110" 
+                  alt="" 
+                />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent"></div>
                 
-                {/* LADO IZQUIERDO: PLAY + TÍTULOS */}
+                {/* CONTENIDO IZQUIERDA: PLAY + INFO */}
                 <div className="relative z-10 flex items-center min-w-0 flex-grow">
                   {mapa.is_custom_song && (
                     <button 
-                      onClick={() => togglePlay(mapa.banner_id)}
+                      onClick={(e) => {
+                        e.preventDefault(); // Evita abrir el link de osu
+                        e.stopPropagation();
+                        togglePlay(mapa.banner_id);
+                      }}
                       className={`relative z-30 mr-5 w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-full border-2 transition-all duration-300
                         ${playingId === mapa.banner_id 
                           ? 'bg-white text-black border-white shadow-[0_0_15px_white]' 
@@ -174,9 +190,9 @@ export default function MappoolPage() {
 
                   <div className="min-w-0 truncate">
                     <div className="flex items-center gap-3">
-                      <a href={`https://osu.ppy.sh/b/${mapa.beatmap_id}`} target="_blank" rel="noopener noreferrer" className="hover:underline font-bold text-[17px] text-white drop-shadow-lg">
+                      <span className="font-bold text-[17px] text-white drop-shadow-lg">
                         {mapa.title}
-                      </a>
+                      </span>
                       {isElite && <span className="bg-[#fdc15a] text-black text-[10px] px-3 py-1 rounded-sm font-black animate-pulse shadow-md">ORIGINAL SONG</span>}
                       {isCustom && <span className="border-2 border-[#fdc15a] text-[#fdc15a] text-[10px] px-2 py-0.5 rounded-sm font-black">CUSTOM MAP</span>}
                     </div>
@@ -186,19 +202,19 @@ export default function MappoolPage() {
                   </div>
                 </div>
 
-                {/* LADO DERECHO: FOTO DEL ARTISTA (Al otro lado del banner) */}
+                {/* CONTENIDO DERECHA: FOTO ARTISTA */}
                 {mapa.artist_photo_url && (
                   <div className="relative z-10 ml-4 flex-shrink-0">
                     <img 
                       src={mapa.artist_photo_url} 
-                      className="w-12 h-12 rounded-full border-2 border-[#fdc15a] object-cover shadow-[0_0_15px_rgba(253,193,90,0.4)] transition-transform group-hover:scale-110" 
+                      className="w-12 h-12 rounded-full border-2 border-[#fdc15a] object-cover shadow-[0_0_15px_rgba(253,193,90,0.4)] transition-transform duration-500 group-hover/banner:rotate-6" 
                       alt="Artist" 
                     />
                   </div>
                 )}
-              </div>
+              </a>
 
-              {/* STATS */}
+              {/* BLOQUES DE ESTADÍSTICAS */}
               <div className="flex flex-shrink-0 text-white font-bold text-[13px] cursor-default">
                 <div className="w-[60px] bg-[#3a3a3a] flex items-center justify-center border-r border-white/5">{mapa.bpm}</div>
                 <div className="w-[60px] bg-[#444444] flex items-center justify-center border-r border-white/5 text-[#fdc15a]">{mapa.sr.toFixed(2)}*</div>
@@ -208,7 +224,13 @@ export default function MappoolPage() {
                 <div className="w-[60px] bg-[#444444] flex items-center justify-center border-r border-white/5 text-[#fdc15a]">{mapa.combo}x</div>
                 <div className="w-[60px] bg-[#3a3a3a] flex items-center justify-center border-r border-white/5">{mapa.od}</div>
                 
-                <a href={mapa.mapper_id ? `https://osu.ppy.sh/users/${mapa.mapper_id}` : `https://osu.ppy.sh/users/${encodeURIComponent(mapa.mapper)}`} target="_blank" rel="noopener noreferrer" className="w-[120px] bg-[#444444] relative flex items-center justify-center px-2 overflow-hidden group/mapper transition-all">
+                {/* MAPPER */}
+                <a 
+                  href={mapa.mapper_id ? `https://osu.ppy.sh/users/${mapa.mapper_id}` : `https://osu.ppy.sh/users/${encodeURIComponent(mapa.mapper)}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="w-[120px] bg-[#444444] relative flex items-center justify-center px-2 overflow-hidden group/mapper transition-all"
+                >
                   {mapa.mapper_id && (
                     <>
                       <img src={`https://a.ppy.sh/${mapa.mapper_id}`} className="absolute inset-0 w-full h-full object-cover blur-[1px] opacity-40 grayscale group-hover/mapper:grayscale-0 group-hover/mapper:opacity-80 transition-all duration-500" alt="" />
@@ -218,8 +240,12 @@ export default function MappoolPage() {
                   <span className="relative z-10 truncate text-[12px] font-normal uppercase text-gray-200 group-hover/mapper:text-[#fdc15a] transition-colors drop-shadow-md">{mapa.mapper}</span>
                 </a>
                 
+                {/* BOTÓN COPIAR ID */}
                 <button 
-                  onClick={() => handleCopy(mapa.beatmap_id.toString())}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopy(mapa.beatmap_id.toString());
+                  }}
                   className={`w-[90px] flex items-center justify-center transition-all relative overflow-hidden font-black
                     ${isElite || isQualifiers ? 'bg-[#fdc15a] text-black hover:bg-white' : 'bg-[#3a3a3a] text-[#fdc15a] hover:bg-white hover:text-black'}`}
                 >
