@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 
 export default function MappoolPage() {
-  const [rondaActual, setRondaActual] = useState('QUARTERFINALS');
+  const [rondaActual, setRondaActual] = useState('FINALS');
   const [todosLosMapas, setTodosLosMapas] = useState<any[]>([]);
   const [rondas, setRondas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
