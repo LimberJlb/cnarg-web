@@ -88,16 +88,6 @@ export default function AuthNav() {
           {isMenuOpen && (
             <div className="absolute top-full right-0 w-full min-w-[200px] bg-[#1a1a1a] border-x-2 border-b-2 border-[#fdc15a] shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-in slide-in-from-top-2 duration-200 z-[100]">
               
-              <Link 
-                href="/pickems"
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center justify-between p-4 hover:bg-[#fdc15a] group transition-colors"
-              >
-                <span className="text-[#fdc15a] group-hover:text-black font-['ITCMachine'] text-lg tracking-widest uppercase">
-                  Mis Pick'ems
-                </span>
-                <span className="text-[#fdc15a] group-hover:text-black text-xl">🏆</span>
-              </Link>
 
               <div className="h-[1px] bg-white/5 mx-4" />
 
