@@ -24,6 +24,12 @@
 .DS_Store
 *.pem
 
+# editors & IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -39,3 +45,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# tournament spreadsheets & temporary files
+*.xlsx
+*.backup.tsx
+/scratch/
+AGENTS.md
+CLAUDE.md

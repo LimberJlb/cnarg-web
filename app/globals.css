@@ -27,16 +27,16 @@ body {
 
 @font-face {
   font-family: 'ITCMachine';
-  src: url('/fonts/itcmachine.otf') format('truetype');
-  font-weight: bold;
+  src: url('/fonts/itcmachine.otf') format('opentype');
   font-style: normal;
+  font-display: block;
 }
 
 @font-face {
   font-family: 'TrebuchetMS';
-  src: url('/fonts/trebuchetms.ttf') format('opentype');
-  font-weight: bold;
+  src: url('/fonts/trebuchetms.ttf') format('truetype');
   font-style: normal;
+  font-display: block;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -57,59 +57,9 @@ body {
   background: #d9953d;
 }
 
-/* Contenedor de la línea que sale del MatchCard */
-.bracket-connector {
-  position: absolute;
-  right: -64px; /* Debe coincidir con el gap-16 (64px) de tu contenedor */
-  top: 50%;
-  width: 64px;
-  height: 2px;
-  z-index: 10;
-}
-
-/* Línea horizontal que sale del match */
-.bracket-connector::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background-color: currentColor; /* Usa el color del texto del componente */
-}
-
-/* Línea vertical que une los dos matches (solo para el primer match de cada par) */
-.connector-vertical {
-  position: absolute;
-  right: 0;
-  width: 2px;
-  background-color: currentColor;
-}
-
-/* Dirección hacia abajo (para el de arriba) */
-.connector-down {
-  top: 0;
-  height: calc(50% + 20px); /* Ajustar según el gap vertical */
-}
-
-/* Dirección hacia arriba (para el de abajo) */
-.connector-up {
-  bottom: 0;
-  height: calc(50% + 20px);
-}
-
 html {
   /* Reserva el espacio del scrollbar siempre, evitando el salto de contenido */
   scrollbar-gutter: stable;
-}
-
-/* Tu scrollbar custom actual (ejemplo de estilo) */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #fdc15a;
-  border-radius: 10px;
 }
 
 html, body {
@@ -118,4 +68,34 @@ html, body {
   padding: 0;
   /* Mata el scroll global para siempre */
   overflow: hidden !important; 
+}
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

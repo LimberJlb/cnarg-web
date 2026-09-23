@@ -1,119 +1,198 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import MatchCard from '../../components/MatchCard';
-import AgendaSidebar from '../../components/AgendaSidebar';
-import { getUpcomingLobbies } from '../../lib/queries';
+import MatchHistorySidebar from '../../components/MatchHistorySidebar';
+import MatchDetailPanel from '../../components/MatchDetailPanel';
+import LoadingScreen from '../../components/LoadingScreen';
+import { Match, getSafeLobby } from '../../types/bracket';
+import {
+  MANUAL_POSITIONS,
+  MANUAL_CONNECTORS,
+  LOSER_PLACEHOLDERS,
+  WINNERS_STAGES,
+  LOSERS_STAGES,
+} from '../../lib/bracketConfig';
 
-// --- CONFIGURACIÓN DE COORDENADAS MANUALES ---
-const MANUAL_POSITIONS: { [key: number]: { row: number; span: number } } = {
-  1: { row: 1, span: 4 }, 2: { row: 3, span: 4 }, 3: { row: 5, span: 4 }, 4: { row: 7, span: 4 }, 
-  5: { row: 9, span: 4 }, 6: { row: 11, span: 4 }, 7: { row: 13, span: 4 }, 8: { row: 15, span: 4 },
-  9: { row: 1, span: 4 }, 10: { row: 3, span: 4 }, 11: { row: 5, span: 4 }, 12: { row: 7, span: 4 }, 
-  13: { row: 2, span: 4 }, 14: { row: 6, span: 4 }, 15: { row: 10, span: 4 }, 16: { row: 14, span: 4 },
-  17: { row: 1, span: 4 }, 18: { row: 3, span: 4 }, 19: { row: 5, span: 4 }, 20: { row: 7, span: 4 },
-  21: { row: 2, span: 4 }, 22: { row: 6, span: 4 }, 23: { row: 4, span: 4 }, 24: { row: 12, span: 4 }, 
-  25: { row: 2, span: 4 }, 26: { row: 6, span: 4 }, 27: { row: 4, span: 4 }, 28: { row: 8, span: 4 },
-  29: { row: 4, span: 4 }, 30: { row: 8, span: 4 }, 31: { row: 8, span: 4 }, 
-};
+let bracketsCache: Match[] | null = null;
 
-// --- CONFIGURACIÓN DE CONECTORES ---
-const manualConnectors: { [key: number]: { type: 'up' | 'down' | 'straight'; step?: number } } = {
-    1: { type: 'down', step: 1 }, 2: { type: 'up', step: 1 }, 3: { type: 'down', step: 1 }, 4: { type: 'up', step: 1 }, 
-    5: { type: 'down', step: 1 }, 6: { type: 'up', step: 1 }, 7: { type: 'down', step: 1 }, 8: { type: 'up', step: 1 },
-    9: { type: 'straight' }, 10: { type: 'straight' }, 11: { type: 'straight' }, 12: { type: 'straight' }, 
-    13: { type: 'down', step: 2 }, 14: { type: 'up', step: 2 }, 15: { type: 'down', step: 2 }, 16: { type: 'up', step: 2 },
-    17: { type: 'down', step: 1 }, 18: { type: 'up', step: 1 }, 19: { type: 'down', step: 1 }, 20: { type: 'up', step: 1 },
-    21: { type: 'straight' }, 22: { type: 'straight' }, 23: { type: 'down', step: 4 }, 24: { type: 'up', step: 4 },  
-    25: { type: 'down', step: 2 }, 26: { type: 'up', step: 2 }, 27: { type: 'straight' }, 28: { type: 'straight' },
-    29: { type: 'straight' }, 30: { type: 'straight' }, 31: { type: 'straight' },
-};
-
-// --- MAPA DE PLACEHOLDERS PARA LOSERS (TIPO CHALLONGE) ---
-const LOSER_PLACEHOLDERS: { [key: number]: { p1?: string; p2?: string } } = {
-  17: { p1: "Perdedor QF4" },
-  18: { p1: "Perdedor QF3" },
-  19: { p1: "Perdedor QF2" },
-  20: { p1: "Perdedor QF1" },
-  25: { p1: "Perdedor SF1" },
-  26: { p1: "Perdedor SF2" },
-  29: { p1: "Perdedor F1" },
-  30: { p2: "Ganador GF R1" },
-};
+async function fetchWithRetry<T = any>(
+  fn: () => PromiseLike<{ data: T | null; error: any }> | Promise<{ data: T | null; error: any }>,
+  retries = 2,
+  delayMs = 1200
+): Promise<{ data: T | null; error: any }> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fn();
+      if (!res.error && res.data) return res;
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, delayMs));
+      } else {
+        return res;
+      }
+    } catch (err: any) {
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, delayMs));
+      } else {
+        return { data: null, error: err };
+      }
+    }
+  }
+  return { data: null, error: new Error('Exceeded retries') };
+}
 
 export default function BracketsPage() {
-  const [lobbies, setLobbies] = useState<any[]>([]);
-  const [partidos, setPartidos] = useState<any[]>([]);
+  const [partidos, setPartidos] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
   const [hoveredTeamName, setHoveredTeamName] = useState<string | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
-  const activeMatchData = partidos.find(p => p.id === hoveredMatchId);
+  // Moverse con click izquierdo
+  const isDragging = useRef(false);
+  const dragDistance = useRef(0);
+  const startPos = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+  const [isGrabbing, setIsGrabbing] = useState(false);
+  const mainRef = useRef<HTMLElement | null>(null);
 
-  const scrollToMatch = (matchId: string) => {
-    const element = document.getElementById(`match-${matchId}`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-      setHoveredMatchId(matchId);
-      setTimeout(() => {
-        setHoveredMatchId((prev) => (prev === matchId ? null : prev));
-      }, 2000);
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Permitir arrastrar exclusivamente con el clic izquierdo
+    if (e.button !== 0) return;
+    isDragging.current = true;
+    dragDistance.current = 0;
+    startPos.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: mainRef.current?.scrollLeft || 0,
+      scrollTop: mainRef.current?.scrollTop || 0,
+    };
+    setIsGrabbing(true);
+  };
+
+  useEffect(() => {
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current || !mainRef.current) return;
+      const dx = e.clientX - startPos.current.x;
+      const dy = e.clientY - startPos.current.y;
+      dragDistance.current = Math.hypot(dx, dy);
+
+      if (dragDistance.current > 3) {
+        mainRef.current.scrollLeft = startPos.current.scrollLeft - dx;
+        mainRef.current.scrollTop = startPos.current.scrollTop - dy;
+      }
+    };
+
+    const handleWindowMouseUp = () => {
+      if (isDragging.current) {
+        isDragging.current = false;
+        setIsGrabbing(false);
+      }
+    };
+
+    window.addEventListener('mousemove', handleWindowMouseMove);
+    window.addEventListener('mouseup', handleWindowMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+  }, []);
+
+  const handleClickCapture = (e: React.MouseEvent) => {
+    // Si el usuario arrastró más de 6px, suprimir el clic para evitar abrir/cerrar partidos por accidente
+    if (dragDistance.current > 6) {
+      e.stopPropagation();
+      e.preventDefault();
     }
   };
 
+  // Determinar el partido activo para el panel de detalles (prioridad: click > hover)
+  const activeMatchId = selectedMatchId || hoveredMatchId;
+  const activeMatchData = useMemo(() => {
+    return partidos.find((p) => p.id === activeMatchId) || null;
+  }, [partidos, activeMatchId]);
+
+  const scrollToMatch = useCallback((matchId: string) => {
+    const element = document.getElementById(`match-${matchId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      setSelectedMatchId(matchId);
+    }
+  }, []);
+
+
   const fetchData = async () => {
+    if (bracketsCache) {
+      setPartidos(bracketsCache);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
-      const [sidebarData, { data: matchesData, error }] = await Promise.all([
-        getUpcomingLobbies(),
+      const { data: matchesData, error } = await fetchWithRetry(() =>
         supabase.from('matches').select(`
           *,
+          team_1_score,
+          team_2_score,
           team_1:teams!team_1_id (
-            id, name, logo_url, 
-            players (nickname, avatar_url)
+            id, name, logo_url, seed,
+            players (nickname, avatar_url, osu_id)
           ),
           team_2:teams!team_2_id (
-            id, name, logo_url, 
-            players (nickname, avatar_url)
+            id, name, logo_url, seed,
+            players (nickname, avatar_url, osu_id)
           ),
           results:match_map_results (map_winner_id),
           lobbies (
+            id,
             status,
             match_time,
+            lobby_link, 
             referee:staff!referee_id (nickname),
             streamer:staff!streamer_id (nickname),
             caster_1:staff!caster_1_id (nickname),
             caster_2:staff!caster_2_id (nickname)
           )
         `)
-      ]);
+      );
+
       if (error) throw error;
-      setLobbies(sidebarData || []);
-      setPartidos(matchesData || []);
+      const list = (matchesData as Match[]) || [];
+      bracketsCache = list;
+      setPartidos(list);
     } catch (error) {
-      console.error("Error cargando la CNARG:", error);
+      console.error('Error cargando la CNARG:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    document.title = 'Brackets | CNARG 4K 2026';
+    fetchData();
+  }, []);
 
-  const getMatchesByRound = (bracket: string, round: string) => {
-    return partidos
-      .filter(p => p.bracket_group?.toLowerCase() === bracket.toLowerCase() && p.stage === round)
-      .sort((a, b) => (a.match_order || 0) - (b.match_order || 0)); 
-  };
+  // Agrupamiento indexado de partidos por clave "bracket:stage" para evitar filtros en cada render
+  const matchesMap = useMemo(() => {
+    const map: Record<string, Match[]> = {};
+    partidos.forEach((p) => {
+      const key = `${p.bracket_group?.toLowerCase()}:${p.stage}`;
+      if (!map[key]) map[key] = [];
+      map[key].push(p);
+    });
 
-  const getHoverProps = (match: any) => ({
-    isHighlighted: hoveredMatchId === match.id || 
-                    match.team_1?.name === hoveredTeamName || 
-                    match.team_2?.name === hoveredTeamName,
-    onMouseEnter: () => setHoveredMatchId(match.id),
-    onMouseLeave: () => { setHoveredMatchId(null); setHoveredTeamName(null); },
-    onTeamHover: setHoveredTeamName,
-    isTeamActive: hoveredTeamName
-  });
+    // Ordenar cada grupo por fila visual en la grilla (MANUAL_POSITIONS)
+    Object.values(map).forEach((list) => {
+      list.sort((a, b) => {
+        const rowA = MANUAL_POSITIONS[a.match_order]?.row ?? (a.match_order || 0);
+        const rowB = MANUAL_POSITIONS[b.match_order]?.row ?? (b.match_order || 0);
+        return rowA - rowB;
+      });
+    });
+
+    return map;
+  }, [partidos]);
 
   const getGridPosition = (roundIndex: number, matchIndex: number, matchOrder: number) => {
     const manual = MANUAL_POSITIONS[matchOrder];
@@ -121,202 +200,150 @@ export default function BracketsPage() {
       return { gridColumn: roundIndex + 1, gridRow: `${manual.row} / span ${manual.span}` };
     }
     const span = Math.pow(2, roundIndex + 1);
-    const start = Math.pow(2, roundIndex) + (matchIndex * Math.pow(2, roundIndex + 1));
+    const start = Math.pow(2, roundIndex) + matchIndex * Math.pow(2, roundIndex + 1);
     return { gridColumn: roundIndex + 1, gridRow: `${start} / span ${span}` };
   };
 
-  const renderBracketSection = (bracketType: 'winners' | 'losers', stages: string[], color: string) => (
-    <div className="flex flex-col mb-48">
-      <div className="ml-10 mb-10 border-l-4 pl-6" style={{ borderColor: color }}>
-        <h2 className="font-['ITCMachine'] text-4xl text-white uppercase tracking-widest">
+  const renderBracketSection = (
+    bracketType: 'winners' | 'losers',
+    stages: string[],
+    color: string,
+    sectionId: string
+  ) => (
+    <div id={sectionId} className="flex flex-col mb-28 sm:mb-40 scroll-mt-24">
+      <div className="ml-4 sm:ml-10 mb-6 sm:mb-10 border-l-4 pl-4 sm:pl-6 flex items-center justify-between" style={{ borderColor: color }}>
+        <h2 className="font-['ITCMachine'] text-2xl sm:text-4xl text-white uppercase tracking-widest">
           {bracketType} Bracket
         </h2>
       </div>
-      
-      <div 
-        className="grid gap-x-32 px-8 auto-rows-[100px]" 
+
+      <div
+        className="grid gap-x-32 px-4 sm:px-8 auto-rows-[100px]"
         style={{ gridTemplateColumns: `repeat(${stages.length}, 300px)` }}
       >
-        {stages.map((stageTitle, roundIndex) => (
-          <React.Fragment key={stageTitle}>
-            <div 
-              className="mb-8 z-30 bg-[#2e2e2e] sticky top-0 py-2 shadow-lg shadow-black/20"
-              style={{ gridColumn: roundIndex + 1, gridRow: '1' }}
-            >
-              <h3 className="w-full text-center font-['ITCMachine'] bg-black/40 py-4 text-xl tracking-widest uppercase border-b-2" 
-                  style={{ color, borderColor: color }}>
-                {stageTitle}
-              </h3>
-            </div>
+        {stages.map((stageTitle, roundIndex) => {
+          const key = `${bracketType}:${stageTitle}`;
+          const stageMatches = matchesMap[key] || [];
 
-            {getMatchesByRound(bracketType, stageTitle).map((match, matchIndex) => {
-              const position = getGridPosition(roundIndex, matchIndex, match.match_order);
-              const connectorConfig = manualConnectors[match.match_order] || { type: 'straight' };
-
-              return (
-                <div 
-                  key={match.id}
-                  className="flex items-center justify-center w-full"
-                  style={{ 
-                    gridColumn: position.gridColumn, 
-                    gridRow: position.gridRow,
-                    marginTop: '40px'
-                  }}
+          return (
+            <React.Fragment key={stageTitle}>
+              {/* Títulos estáticos */}
+              <div
+                className="mb-8 bg-[#2e2e2e] py-2 shadow-lg shadow-black/20"
+                style={{ gridColumn: roundIndex + 1, gridRow: '1' }}
+              >
+                <h3
+                  className="w-full text-center font-['ITCMachine'] bg-black/40 py-4 text-xl tracking-widest uppercase border-b-2"
+                  style={{ color, borderColor: color }}
                 >
-                  <MatchCard 
-                    match={match} 
-                    {...getHoverProps(match)} 
-                    showConnector={bracketType === 'winners' ? true : stageTitle !== 'GRAND FINALS R1'} 
-                    connectorType={connectorConfig.type} 
-                    connectorStep={connectorConfig.step || 1}
-                    isLosers={bracketType === 'losers'}
-                    placeholder1={LOSER_PLACEHOLDERS[match.match_order]?.p1}
-                    placeholder2={LOSER_PLACEHOLDERS[match.match_order]?.p2}
-                  />
-                </div>
-              );
-            })}
-          </React.Fragment>
-        ))}
+                  {stageTitle}
+                </h3>
+              </div>
+
+              {stageMatches.map((match, matchIndex) => {
+                const position = getGridPosition(roundIndex, matchIndex, match.match_order);
+                const connectorConfig = MANUAL_CONNECTORS[match.match_order] || { type: 'straight' };
+
+                const lobby = getSafeLobby(match);
+                const isWBD = lobby?.status?.toLowerCase() === 'wbd';
+                const isHighlighted =
+                  hoveredMatchId === match.id ||
+                  (Boolean(hoveredTeamName) &&
+                    (match.team_1?.name === hoveredTeamName || match.team_2?.name === hoveredTeamName));
+                const isSelected = selectedMatchId === match.id;
+
+                return (
+                  <div
+                    key={match.id}
+                    className="flex items-center justify-center w-full"
+                    style={{
+                      gridColumn: position.gridColumn,
+                      gridRow: position.gridRow,
+                      marginTop: '40px',
+                    }}
+                  >
+                    <MatchCard
+                      match={match}
+                      isHighlighted={isHighlighted}
+                      isSelected={isSelected}
+                      onMouseEnter={() => setHoveredMatchId(match.id)}
+                      onMouseLeave={() => {
+                        setHoveredMatchId(null);
+                        setHoveredTeamName(null);
+                      }}
+                      onClick={() => {
+                        setSelectedMatchId((prev) => (prev === match.id ? null : match.id));
+                      }}
+                      onTeamHover={setHoveredTeamName}
+                      showConnector={roundIndex < stages.length - 1}
+                      connectorType={connectorConfig.type}
+                      connectorStep={connectorConfig.step || 1}
+                      isLosers={bracketType === 'losers'}
+                      placeholder1={LOSER_PLACEHOLDERS[match.match_order]?.p1}
+                      placeholder2={LOSER_PLACEHOLDERS[match.match_order]?.p2}
+                      isWBD={isWBD}
+                    />
+                  </div>
+                );
+              })}
+            </React.Fragment>
+          );
+        })}
       </div>
     </div>
   );
 
-  if (loading) return <div className="h-screen bg-[#2e2e2e] flex items-center justify-center font-['ITCMachine'] text-[#fdc15a] text-4xl animate-pulse tracking-widest uppercase">Cargando la CNARG...</div>;
+  if (loading) {
+    return <LoadingScreen message="CARGANDO BRACKETS..." />;
+  }
 
   return (
-    <div className="fixed inset-0 pt-[80px] w-full h-full flex flex-col bg-[#2e2e2e] overflow-hidden select-none">
+    <div className="fixed top-[80px] bottom-0 md:bottom-12 left-0 right-0 w-full flex flex-col bg-[#2e2e2e] overflow-hidden select-none animate-fadeIn">
       <div className="flex flex-1 h-full overflow-hidden relative">
-        <AgendaSidebar 
-          lobbies={lobbies} 
-          activeId={hoveredMatchId} 
-          onHover={setHoveredMatchId} 
-          onMatchClick={scrollToMatch} 
+        <MatchHistorySidebar
+          matches={partidos}
+          activeId={activeMatchId}
+          onHover={setHoveredMatchId}
+          onMatchClick={scrollToMatch}
         />
-        <MatchDetailPanel match={activeMatchData} />
-        <main className="flex-1 h-full overflow-auto p-8 custom-scrollbar">
-          <div className="ml-10 mb-16">
-            <h1 className="font-['ITCMachine'] text-[80px] lg:text-[100px] uppercase text-white leading-none text-shadow-lg">
+
+        <MatchDetailPanel
+          match={activeMatchData}
+          isPinned={Boolean(selectedMatchId)}
+          onClose={() => setSelectedMatchId(null)}
+        />
+
+        <section
+          ref={mainRef}
+          aria-label="Cuadro interactivo de brackets"
+          onMouseDown={handleMouseDown}
+          onClickCapture={handleClickCapture}
+          onDragStart={(e) => e.preventDefault()}
+          className={`flex-1 h-full overflow-auto p-4 sm:p-8 pb-32 md:pb-20 custom-scrollbar ${
+            isGrabbing ? 'cursor-grabbing select-none' : 'cursor-grab'
+          }`}
+        >
+          {/* Header con título */}
+          <div className="ml-4 sm:ml-10 mb-8 sm:mb-12">
+            <h1 className="font-['ITCMachine'] text-4xl sm:text-6xl md:text-8xl lg:text-[100px] uppercase text-white leading-none text-shadow-lg">
               BRACKETS
             </h1>
+            <p className="text-zinc-400 text-xs font-bold uppercase tracking-[0.3em] mt-2">
+              Arrastra con clic izquierdo para explorar • Clic en un partido para fijar detalles
+            </p>
+            {/* Mensaje de ayuda táctil en celular */}
+            <div className="md:hidden inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-lg bg-[#fdc15a]/10 border border-[#fdc15a]/20 text-[#fdc15a] text-xs font-mono">
+              <span>Desliza con el dedo para ver las rondas</span>
+            </div>
           </div>
-          {renderBracketSection('winners', ['ROUND OF 16', 'QUARTERFINALS', 'SEMIFINALS', 'FINALS', 'GRAND FINALS'], '#fdc15a')}
-          <div className="h-[2px] bg-white/5 w-full my-32" />
-          {renderBracketSection('losers', ['QUARTERFINALS R1', 'SEMIFINALS R1', 'SEMIFINALS R2', 'FINALS R1', 'FINALS R2', 'GRAND FINALS R1'], '#67a4da')}
-        </main>
+
+          {renderBracketSection('winners', WINNERS_STAGES, '#fdc15a', 'winners-bracket')}
+
+          <div className="h-[2px] bg-white/5 w-full my-20 sm:my-28" />
+
+          {renderBracketSection('losers', LOSERS_STAGES, '#67a4da', 'losers-bracket')}
+        </section>
       </div>
-    </div>
-  );
-}
-
-function MatchDetailPanel({ match }: { match: any }) {
-  if (!match) return null;
-
-  const lobby = Array.isArray(match.lobbies) ? match.lobbies[0] : match.lobbies;
-  if (!lobby) return null;
-
-  const isLosers = match.bracket_group?.toLowerCase() === 'losers';
-  const colorClass = isLosers ? 'text-[#67a4da]' : 'text-[#fdc15a]';
-  const borderColor = isLosers ? 'border-[#67a4da]' : 'border-[#fdc15a]';
-  const accentBg = isLosers ? 'bg-[#67a4da]/10' : 'bg-[#fdc15a]/10';
-
-  const fechaStr = lobby.match_time 
-    ? new Date(lobby.match_time).toLocaleDateString('es-AR', { day: '2-digit', month: 'long' }) 
-    : 'FECHA TBD';
-  const horaStr = lobby.match_time 
-    ? new Date(lobby.match_time).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) 
-    : '--:--';
-
-  return (
-    <div className={`absolute bottom-6 right-6 z-[300] w-[520px] bg-[#0c0c0c]/98 border-2 ${borderColor} shadow-[0_0_20px_rgba(0,0,0,1)] animate-in fade-in zoom-in slide-in-from-right-10 duration-500 backdrop-blur-3xl rounded-sm overflow-hidden`}>
-      
-      {/* HEADER */}
-      <div className={`p-4 ${accentBg} border-b border-white/10 flex justify-between items-center`}>
-        <div className="flex flex-col">
-          <span className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.3em]">CNARG 2026</span>
-          <h3 className={`font-['ITCMachine'] ${colorClass} text-2xl uppercase leading-none tracking-widest`}>
-            {match.stage || 'STAGE'}
-          </h3>
-        </div>
-        <div className="text-right">
-          <p className="text-white font-bold text-sm uppercase">{fechaStr}</p>
-          <p className={`${colorClass} font-black text-xs uppercase`}>{horaStr} HS (ARG)</p>
-        </div>
-      </div>
-
-      {/* ROSTERS ESPEJADOS */}
-      <div className="p-6 flex justify-between gap-6 relative">
-        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] font-['ITCMachine'] text-9xl italic ${colorClass}`}>VS</div>
-
-        {/* TEAM 1 */}
-        <div className="flex-1 flex flex-col items-start z-10">
-          <div className="flex items-center gap-3 mb-6 w-full">
-            <img src={match.team_1?.logo_url || '/no-logo.png'} className="w-10 h-10 object-contain drop-shadow-lg" alt="" />
-            <h4 className="text-white font-['ITCMachine'] text-lg uppercase truncate">{match.team_1?.name}</h4>
-          </div>
-          <div className="space-y-4 w-full">
-            {match.team_1?.players?.slice(0, 5).map((p: any, i: number) => (
-              <div key={i} className="flex items-center gap-3 group">
-                <div className={`w-11 h-11 rounded-full border-2 ${borderColor} overflow-hidden bg-zinc-900 shrink-0`}>
-                  <img src={p.avatar_url || '/no-avatar.png'} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" alt="" />
-                </div>
-                <span className="text-[15px] text-zinc-200 font-bold tracking-tight truncate">{p.nickname}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* TEAM 2 */}
-        <div className="flex-1 flex flex-col items-end z-10">
-          <div className="flex items-center gap-3 mb-6 w-full justify-end">
-            <h4 className="text-white font-['ITCMachine'] text-lg uppercase truncate text-right">{match.team_2?.name}</h4>
-            <img src={match.team_2?.logo_url || '/no-logo.png'} className="w-10 h-10 object-contain drop-shadow-lg" alt="" />
-          </div>
-          <div className="space-y-4 w-full">
-            {match.team_2?.players?.slice(0, 5).map((p: any, i: number) => (
-              <div key={i} className="flex items-center gap-3 group justify-end">
-                <span className="text-[15px] text-zinc-200 font-bold tracking-tight truncate text-right">{p.nickname}</span>
-                <div className={`w-11 h-11 rounded-full border-2 ${borderColor} overflow-hidden bg-zinc-900 shrink-0`}>
-                  <img src={p.avatar_url || '/no-avatar.png'} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" alt="" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* STREAMING BAR */}
-      <div className="bg-white/[0.05] py-3 flex justify-center items-center gap-4 border-y border-white/5">
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_10px_#dc2626]"></div>
-        </div>
-        <span className={`font-['ITCMachine'] text-lg tracking-[0.1em] ${colorClass}`}>
-          TWITCH.TV/CNARG_4K
-        </span>
-      </div>
-
-      {/* STAFF FOOTER */}
-      <div className="bg-black/40 p-3 flex justify-between items-center gap-2">
-        <div className="flex flex-col">
-          <span className="text-[11px] text-zinc-500 font-black uppercase tracking-widest mb-1">⚖️ Referee</span>
-          <span className="text-base text-white font-black tracking-tight">{lobby.referee?.nickname || 'Por confirmar'}</span>
-        </div>
-        
-        <div className="flex flex-col items-center text-center px-4 border-x border-white/10 flex-1">
-          <span className="text-[11px] text-zinc-500 font-black uppercase tracking-widest mb-1">🎙️ Casters</span>
-          <div className="flex flex-col">
-            <span className="text-base text-white font-black leading-tight tracking-tight">{lobby.caster_1?.nickname || 'Por confirmar'}</span>
-            {lobby.caster_2 && <span className="text-base text-white font-black leading-tight tracking-tight uppercase">{lobby.caster_2.nickname}</span>}
-          </div>
-        </div>
-
-        <div className="flex flex-col items-end">
-          <span className="text-[11px] text-zinc-500 font-black uppercase tracking-widest mb-1">🎥 Streamer</span>
-          <span className="text-base text-white font-black tracking-tight">{lobby.streamer?.nickname || 'Por confirmar'}</span>
-        </div>
-      </div>
-
-      <div className={`h-2.5 w-full ${isLosers ? 'bg-[#67a4da]' : 'bg-[#fdc15a]'}`}></div>
     </div>
   );
 }
