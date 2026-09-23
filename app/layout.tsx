@@ -16,12 +16,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://cnarg-4k.vercel.app'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://cnarg.limbereadas.net'),
   title: {
     default: "CNARG 4K 2026",
     template: "%s | CNARG 4K 2026",
   },
-  description: "Copa Nacional Argentina 4K 2026 - Torneo argentino oficial de osu!mania 4K.",
+  description: "Copa Nacional Argentina 4K 2026 - Un Torneo de Osu!mania hecho por Limber, Nubbo y Todos",
   keywords: ["osu", "osu!mania", "CNARG", "CNARG 4K", "Argentina", "Torneo", "Esports", "osu 4k"],
   authors: [{ name: "CNARG Team" }],
   icons: {
@@ -29,23 +29,23 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "CNARG 4K 2026",
-    description: "Copa Nacional Argentina 4K 2026 - Torneo argentino oficial de osu!mania 4K.",
+    description: "Copa Nacional Argentina 4K 2026 - Un Torneo de Osu!mania hecho por Limber, Nubbo y Todos",
     siteName: "CNARG 4K 2026",
     locale: "es_AR",
     type: "website",
     images: [
       {
         url: "/logo-4k.png",
-        width: 800,
-        height: 600,
+        width: 500,
+        height: 500,
         alt: "Logo CNARG 4K 2026",
       },
     ],
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "CNARG 4K 2026",
-    description: "Copa Nacional Argentina 4K 2026 - Torneo argentino oficial de osu!mania 4K.",
+    description: "Copa Nacional Argentina 4K 2026 - Un Torneo de Osu!mania hecho por Limber, Nubbo y Todos",
     images: ["/logo-4k.png"],
   },
 };
